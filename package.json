@@ -1,0 +1,35 @@
+{
+  "name": "@pagecoy/packy-cli",
+  "version": "1.0.0",
+  "description": "Pack your project files and directory structures into an optimized markdown context file for LLMs",
+  "main": "dist/index.js",
+  "bin": {
+    "packy-cli": "./dist/index.js"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "scripts": {
+    "dev": "tsx src/index.ts",
+    "build": "tsc"
+  },
+  "keywords": [
+    "llm",
+    "context",
+    "packer",
+    "tokens",
+    "cli",
+    "prompt-engineering",
+    "dev-tools"
+  ],
+  "author": "pagecoy",
+  "license": "ISC",
+  "type": "commonjs",
+  "devDependencies": {
+    "@types/node": "^25.9.3",
+    "commander": "^15.0.0",
+    "ignore": "^7.0.5",
+    "tsx": "^4.22.4",
+    "typescript": "^6.0.3"
+  }
+}
