@@ -13,6 +13,7 @@ Instead of pasting multiple files in an LLM web face, pack it and send one file 
 ## Installation
 ### Option 1: Global Local Installation
 **NOTE:** Please be aware that this is in beta. I haven't tested this on other operating systems other than Linux (Ubuntu).
+
 If you clone this repository directly to your machine, you can build and link the binary locally:
 
 ```bash
@@ -20,12 +21,16 @@ If you clone this repository directly to your machine, you can build and link th
 npm run build
 chmod +x dist/index.js
 npm link 
+
+# alternatively, you can use the link.sh script that does the above in one go
+chmod +x link.sh
+./link.sh
 ```
 ### Option 2: Install via npm (ONCE PUBLISHED)
-Once published this to npm, you can run Packy anywhere. 
+Once I published this to npm, you can run Packy anywhere without having to clone.
 
 ## Linux Dependencies
-For optimal performance on Linux environments, ensure your system has a clipboard backend ready:
+For Linux environments, ensure your system has a clipboard backend ready:
 
 ```bash
 sudo apt update && sudo apt install -y xsel
@@ -34,8 +39,7 @@ sudo apt update && sudo apt install -y xsel
 ## Usage
 Run the tool from the root of any workspace you want to pack. 
 
-**IMPORTANT NOTES:** 
-* Packy only respects the `.gitignore` file that's in root. If you have a codebase that separates the frontend and backend then you run Packy in the root, it will NOT respect your `.gitignore`s in both directories resulting in a massive `llm_context.md` file.
+**IMPORTANT NOTE:** 
 * Packy is hardcoded to ignore the names in `DEFAULT_IGNORES` in `src/index.ts`. There might be things I didn't hardcode for fallbacks (if there is no `.gitignore`), just be aware.
 
 ```bash
@@ -47,7 +51,8 @@ packy-cli [options]
 | --- | --- | --- |
 | `-c` | `--copy` | Stream the output context directly to your system clipboard. |
 | `-s` | `--strip-comments` | Ignore inline comments out of source code components. |
-| `-v` | `--version` | Display current package version details. |
+| `-m` | `--map-only` | Generate only the file tree without source file contents |
+| `-V` | `--version` | Display current package version details. |
 | `-h` | `--help` | Pull up CLI tool parameters and configuration help. |
 
 ### Example

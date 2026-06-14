@@ -1,6 +1,6 @@
 {
   "name": "@pagecoy/packy-cli",
-  "version": "1.0.0",
+  "version": "1.0.0-beta.2",
   "description": "Pack your project files and directory structures into an optimized markdown context file for LLMs",
   "main": "dist/index.js",
   "bin": {
@@ -20,7 +20,9 @@
     "tokens",
     "cli",
     "prompt-engineering",
-    "dev-tools"
+    "dev-tools",
+    "codebase",
+    "typescript"
   ],
   "author": "pagecoy",
   "license": "ISC",

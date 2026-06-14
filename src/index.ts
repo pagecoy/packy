@@ -17,19 +17,19 @@ program
   .version('1.0.0')
   .option('-c, --copy', 'Automatically copy the output directly to your system clipboard', false)
   .option('-s, --strip-comments', 'Strip comments out of source code files for token optimization', false)
+  .option('-m, --map-only', 'Generate only the file tree without source file contents', false)
   .parse(process.argv);
 
 const ig = ignore();
 
 const DEFAULT_IGNORES = [
-  'node_modules', '.git', 'dist', 'build', 
-  '.next', '.nuxt', '.output', '.cache',
-  'package-lock.json', 'yarn.lock', 'pnpm-lock.yaml', 'llm_context.md',
-  'venv', '.venv', 'env', '.env',
-  '__pycache__', '.pytest_cache', 
-  '.env', '.env.local', '.env.development',
-  '.vscode', '.idea',
-  '*.log', '*.pyc', '*.sqlite3', '*.db',
+  'node_modules', 'package-lock.json', 'yarn.lock', 'pnpm-lock.yaml', '.npm',
+  '.git', 'llm_context.md', 'temp.txt',
+  'dist', 'build', 'out', '.next', '.nuxt', '.output', '.cache', 'coverage',
+  'venv', '.venv', 'env', '__pycache__', '.pytest_cache', '*.pyc',
+  '.env', '.env.local', '.env.development', '.env.production', '.env.test',
+  '.vscode', '.idea', '*.suo', '*.ntvs*', '*.njsproj',
+  '*.log', '*.sqlite3', '*.db', '.DS_Store', 'Thumbs.db'
 ];
 ig.add(DEFAULT_IGNORES);
 
@@ -53,98 +53,128 @@ function writeToBuffer(text: string): void {
 /**
  * Recursively scans a directory and maps out a visual ASCII structure tree. 
  */
-function buildTree(dirPath: string, rootDir: string, prefix: string = ""): void {
-    const files = fs.readdirSync(dirPath);
+function buildTree(dirPath: string, rootDir: string, prefix: string = "", parentRules: string[] = []): void {
+    
+    // create a fresh ignore instance for the directory scope, inheriting from theparent
+    const localIgnore = ignore().add(DEFAULT_IGNORES).add(parentRules)
 
-    /*const validFiles = files.filter(file => {
-        const fullPath = path.join(dirPath, file);
-        const relativePath = path.relative(rootDir, fullPath);
-        console.log("Ignoring file")
-        return !ig.ignores(relativePath);
-    });*/
+    // read local rules if they exist and keep track of them for children
+    let currentDirRules: string[] = [];
+
+    const localGitignorePath = path.join(dirPath, '.gitignore');
+    if (fs.existsSync(localGitignorePath)) {
+        const gitignoreContent = fs.readFileSync(localGitignorePath, 'utf-8');
+        currentDirRules = gitignoreContent.split(/\r?\n/).filter(line => line.trim() && !line.startsWith('#'));
+        localIgnore.add(currentDirRules);
+    }
+    
+    const files = fs.readdirSync(dirPath);
 
     files.forEach((file, index) => {
         const fullPath = path.join(dirPath, file);
-        const relativePath = path.relative(rootDir, fullPath);
-        
-        const isIgnored = ig.ignores(relativePath);
+        const relativeToRoot = path.relative(rootDir, fullPath);
+        const relativeToCurrentDir = path.relative(dirPath, fullPath);
         const isDirectory = fs.statSync(fullPath).isDirectory();
+        
+        // For directories, check both the name and the name with trailing slash
+        // to properly match .gitignore patterns like "old-folder/"
+        let isIgnored = localIgnore.ignores(relativeToCurrentDir);
+        if (isDirectory && !isIgnored) {
+            isIgnored = localIgnore.ignores(relativeToCurrentDir + '/');
+        }
         
         const isLast = index === files.length - 1;
         const marker = isLast ? "└── " : "├── ";
 
-        // Always print the file/folder name
-        // Append [ignored] if it's a folder we aren't allowed to enter
-        const label = (isIgnored && isDirectory) ? `${file} [ignored]` : file;
+        const label = isDirectory ? `${file}/` : file;
         console.log('Building tree...')
         writeToBuffer(`${prefix}${marker}${label}`);
 
-        // Only recurse if it's NOT ignored and IS a directory
         if (isDirectory && !isIgnored) {
             const nextPrefix = prefix + (isLast ? "    " : "│   ");
-            buildTree(fullPath, rootDir, nextPrefix);
+            const combinedRules = [...parentRules, ...currentDirRules]
+            buildTree(fullPath, rootDir, nextPrefix, combinedRules);
         }
     });
 }
 /**
  * Recursively reads file source code, compresses vertical whitespace, and wraps them in markdown tags.
  * Supports universal comment stripping across C-style, Hash-style, and Markup-style languages.
+ * Respects nested .gitignore files in subdirectories.
  */
-function appendFileContents(dirPath: string, rootDir: string, stripComments: boolean): void {
+function appendFileContents(dirPath: string, rootDir: string, stripComments: boolean, parentRules: string[] = []): void {
+    // create a fresh ignore instance for the directory scope, inheriting from parent
+    const localIgnore = ignore().add(DEFAULT_IGNORES).add(parentRules);
+
+    // read local rules if they exist and keep track of them for children
+    let currentDirRules: string[] = [];
+
+    const localGitignorePath = path.join(dirPath, '.gitignore');
+    if (fs.existsSync(localGitignorePath)) {
+        const gitignoreContent = fs.readFileSync(localGitignorePath, 'utf-8');
+        currentDirRules = gitignoreContent.split(/\r?\n/).filter(line => line.trim() && !line.startsWith('#'));
+        localIgnore.add(currentDirRules);
+    }
+
     const files = fs.readdirSync(dirPath);
 
-    const validFiles = files.filter(file => {
+    for (const file of files) {
         const fullPath = path.join(dirPath, file);
+        const relativeToCurrentDir = path.relative(dirPath, fullPath);
         const relativePath = path.relative(rootDir, fullPath);
-        return !ig.ignores(relativePath);
-    });
-
-    for (const file of validFiles) {
-        const fullPath = path.join(dirPath, file);
         const stat = fs.statSync(fullPath);
 
-        if (stat.isDirectory()) {
-            appendFileContents(fullPath, rootDir, stripComments);
-        } else {
-            const relativePath = path.relative(rootDir, fullPath);
-            const ext = path.extname(file).substring(1).toLowerCase() || "text";
+        // For directories, check both the name and the name with trailing slash
+        // to properly match .gitignore patterns like "old-folder/"
+        let isIgnored = localIgnore.ignores(relativeToCurrentDir);
+        if (stat.isDirectory() && !isIgnored) {
+            isIgnored = localIgnore.ignores(relativeToCurrentDir + '/');
+        }
 
-            let content = fs.readFileSync(fullPath, 'utf-8');
+        if (!isIgnored) {
+            if (stat.isDirectory()) {
+                const combinedRules = [...parentRules, ...currentDirRules];
+                appendFileContents(fullPath, rootDir, stripComments, combinedRules);
+            } else {
+                const ext = path.extname(file).substring(1).toLowerCase() || "text";
 
-            if (stripComments) {
-                const cStyle = ['ts', 'tsx', 'js', 'jsx', 'json', 'css', 'scss', 'go', 'rs', 'java', 'c', 'cpp', 'cs', 'php'];
-                const hashStyle = ['py', 'sh', 'bash', 'yaml', 'yml', 'toml', 'ini', 'dockerfile', 'rb', 'pl'];
-                const markupStyle = ['html', 'xhtml', 'xml', 'md', 'vue', 'svelte'];
+                let content = fs.readFileSync(fullPath, 'utf-8');
 
-                if (cStyle.includes(ext)) {
-                    if (['tsx', 'jsx'].includes(ext)) {
-                        content = content.replace(new RegExp('\\{\\/\\*[\\s\\S]*?\\*\\/\\}', 'g'), "");
+                if (stripComments) {
+                    const cStyle = ['ts', 'tsx', 'js', 'jsx', 'json', 'css', 'scss', 'go', 'rs', 'java', 'c', 'cpp', 'cs', 'php'];
+                    const hashStyle = ['py', 'sh', 'bash', 'yaml', 'yml', 'toml', 'ini', 'dockerfile', 'rb', 'pl'];
+                    const markupStyle = ['html', 'xhtml', 'xml', 'md', 'vue', 'svelte'];
+
+                    if (cStyle.includes(ext)) {
+                        if (['tsx', 'jsx'].includes(ext)) {
+                            content = content.replace(new RegExp('\\{\\/\\*[\\s\\S]*?\\*\\/\\}', 'g'), "");
+                        }
+                        content = content.replace(new RegExp('\\/\\*[\\s\\S]*?\\*\\/', 'g'), "");
+                        content = content.replace(/(^|[^:])\/\/.*$/gm, "");
+                    } 
+                    else if (hashStyle.includes(ext)) {
+                        if (ext === 'py') {
+                            content = content.replace(new RegExp('"""[\\s\\S]*?"""', 'g'), "");
+                            content = content.replace(new RegExp("'''[\\s\\S]*?'''", 'g'), "");
+                        }
+                           content = content.replace(/(^|[^#])#.*$/gm, (match, p1) => p1 === ' ' || p1 === '' ? '' : p1);
+                        content = content.replace(/^\s*#.*$/gm, "");
+                    } 
+                    else if (markupStyle.includes(ext)) {
+                        
+                        content = content.replace(new RegExp('', 'g'), "");
                     }
-                    content = content.replace(new RegExp('\\/\\*[\\s\\S]*?\\*\\/', 'g'), "");
-                    content = content.replace(/(^|[^:])\/\/.*$/gm, "");
-                } 
-                else if (hashStyle.includes(ext)) {
-                    if (ext === 'py') {
-                        content = content.replace(new RegExp('"""[\\s\\S]*?"""', 'g'), "");
-                        content = content.replace(new RegExp("'''[\\s\\S]*?'''", 'g'), "");
-                    }
-                       content = content.replace(/(^|[^#])#.*$/gm, (match, p1) => p1 === ' ' || p1 === '' ? '' : p1);
-                    content = content.replace(/^\s*#.*$/gm, "");
-                } 
-                else if (markupStyle.includes(ext)) {
-                    
-                    content = content.replace(new RegExp('', 'g'), "");
                 }
+
+                // Squeeze out empty vertical lines to save token density
+                const compressedContent = content.replace(/^\s*[\r\n]/gm, "");
+
+                console.log('Compressing content...')
+                writeToBuffer(`\n### File: ${relativePath}`);
+                writeToBuffer(`\`\`\`${ext}`);
+                writeToBuffer(compressedContent.trim());
+                writeToBuffer(`\`\`\`\n---`);
             }
-
-            // Squeeze out empty vertical lines to save token density
-            const compressedContent = content.replace(/^\s*[\r\n]/gm, "");
-
-            console.log('Compressing content...')
-            writeToBuffer(`\n### File: ${relativePath}`);
-            writeToBuffer(`\`\`\`${ext}`);
-            writeToBuffer(compressedContent.trim());
-            writeToBuffer(`\`\`\`\n---`);
         }
     }
 }
@@ -187,14 +217,22 @@ function copyToClipboard(text: string): void {
 const options = program.opts();
 
 // Main runner
-writeToBuffer("# Project Context and Source Code");
+if (options.mapOnly) {
+    writeToBuffer("# Project File Tree");
+} else {
+    writeToBuffer("# Project Context and Source Code");
+}
+
 writeToBuffer("## Project Directory Tree\n```text");
 writeToBuffer(path.basename(targetDir) + "/");
 
 buildTree(targetDir, targetDir, "");
 writeToBuffer("```\n");
-writeToBuffer("## Source File Contents\n");
-appendFileContents(targetDir, targetDir, options.stripComments);
+
+if (!options.mapOnly) {
+    writeToBuffer("## Source File Contents\n");
+    appendFileContents(targetDir, targetDir, options.stripComments, []);
+}
 
 const outputPath = path.join(targetDir, 'llm_context.md');
 fs.writeFileSync(outputPath, outputBuffer, 'utf-8');
@@ -215,6 +253,14 @@ if (options.copy) {
     copyToClipboard(outputBuffer)
 }
 
-if (options.stripComments) {
+if (options.stripComments && !options.mapOnly) {
     console.log(`Packy: I didn't include your comments in packing.`);
+}
+
+if (options.mapOnly) {
+    console.log(`Packy: I only made a file tree, no file contents.`)
+}
+
+if (options.mapOnly && options.stripComments) {
+    console.log(`Packy: -s won't work with -m because it only makes your file tree`)
 }
