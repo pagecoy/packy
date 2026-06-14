@@ -14,7 +14,7 @@ import { execSync } from 'child_process';
 program
   .name('packy')
   .description('Pack your codebase into an optimized markdown context file')
-  .version('1.0.0')
+  .version('1.0.0-beta.2')
   .option('-c, --copy', 'Automatically copy the output directly to your system clipboard', false)
   .option('-s, --strip-comments', 'Strip comments out of source code files for token optimization', false)
   .option('-m, --map-only', 'Generate only the file tree without source file contents', false)
