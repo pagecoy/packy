@@ -2,13 +2,13 @@
 
 Packy is a lightweight, free, cross-platform CLI utility made to pack entire codebases, directories, and file structures into a single optimized Markdown file. Perfectly engineered to feed clean structural context straight into LLMs or custom AI prompts.
 
-Instead of pasting multiple files in an LLM web face, pack it and send one file that has all.
+I got tired of pasting multiple files in an LLM web face, with Packy I just pack it and send one file that has all.
 
 ## Features
 * **File Tree Generation:** Packy makes a filetree that helps your LLM understand the structure of your project.
 * **Token Squeezing:** Removes vertical whitespace that LLMs see as `\n` to reduce token count.
 * **Zero Overhead:** Cross-platform clipboard integration using native OS binaries (Linux users must have `xsel` or `xclip`).
-* **Token Size Estimation:** Generates character metrics and weight instantly. Outputs are just estimation, actual token usage varies by what you use.
+* **Token Size Estimation:** Generates token count estimated using ~4 chars per token. Outputs are just estimation, actual token usage varies by what you use.
 
 ## Installation
 ### Option 1: Global Local Installation
