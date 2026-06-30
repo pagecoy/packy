@@ -2,7 +2,14 @@
 
 All notable changes in this project will be documented in this file.
 
-## [1.0.0-beta.2] - 2026-6-14
+## 2026-06-30
+### Added
+- MIT LICENSE file
+
+### Changes
+- `README.md`
+
+## [1.0.0-beta.2] - 2026-06-14
 ### Added
 - New `-m` / `--map-only` flag to generate directory trees without source file contents.
 

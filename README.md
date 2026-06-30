@@ -11,23 +11,23 @@ I got tired of pasting multiple files in an LLM web face, with Packy I just pack
 * **Token Size Estimation:** Generates token count estimated using ~4 chars per token. Outputs are just estimation, actual token usage varies by what you use.
 
 ## Installation
-### Option 1: Global Local Installation
+### Global Local Installation
 **NOTE:** Please be aware that this is in beta. I haven't tested this on other operating systems other than Linux (Ubuntu).
 
 If you clone this repository directly to your machine, you can build and link the binary locally:
 
 ```bash
-# clone and link locally
+git clone https://github.com/pagecoy/packy.git
+cd packy
+npm install
 npm run build
 chmod +x dist/index.js
 npm link 
 
-# alternatively, you can use the link.sh script that does the above in one go
+# alternatively, you can use the link.sh script that does the building and linking
 chmod +x link.sh
 ./link.sh
 ```
-### Option 2: Install via npm (ONCE PUBLISHED)
-Once I published this to npm, you can run Packy anywhere without having to clone.
 
 ## Linux Dependencies
 For Linux environments, ensure your system has a clipboard backend ready:
@@ -66,3 +66,6 @@ packy -s -c
 Packy creates an `llm_context.md` file formatted like this:
 1. **Project Directory Tree:** A visual clean map layout of your files.
 2. **Source File Contents:** Your actual code segments neatly organized into standard Markdown code-blocks matching their original file extensions.
+
+## License
+MIT
